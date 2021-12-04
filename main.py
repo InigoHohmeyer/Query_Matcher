@@ -1,19 +1,16 @@
 import math
 
 import nltk
-import np as np
-from nltk.stem import WordNetLemmatizer
-from nltk.stem import PorterStemmer
-import numpy as numpy
+import numpy as np
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 from scipy import spatial
 import stop_list
 import string
 
-lemmatizer = WordNetLemmatizer()
-ps = PorterStemmer()
 # list of words that we don't need to use when making our vectors
-stopwords = stop_list.closed_class_stop_words
+stopwords0 = set(stopwords.words('english'))
+stopwords1 = stop_list.closed_class_stop_words
 # number of documents which contain certain words in the queries and in the abstracts
 freq_abstracts = {}
 freq_queries = {}
@@ -30,16 +27,10 @@ with open('cran.all.1400', 'r') as file:
 queries = word_tokenize(query_file)
 abstract = word_tokenize(abstract_file)
 # makes it so I doesn't get removed
-#pos tags the words
-pos_queries = nltk.pos_tag(queries)
-pos_abstract = nltk.pos_tag(abstract)
-
-
 j = 0
 for i in queries:
     if i == ".I":
         queries[j] = "INDEX"
-
     j += 1
 
 j = 0
@@ -47,20 +38,17 @@ for i in abstract:
     if i == ".I":
         abstract[j] = "INDEX"
     j += 1
-
 # gets rid of all the punctuation, numbers and stopwords in both list
 queries = [''.join(c for c in s if c not in string.punctuation) for s in queries]
 queries = [''.join(c for c in s if c not in string.digits) for s in queries]
-queries = [value for value in queries if value not in stopwords]
 queries = [s for s in queries if s]
+queries = [value for value in queries if value not in stopwords1]
+
 
 abstract = [''.join(c for c in s if c not in string.punctuation) for s in abstract]
 abstract = [''.join(c for c in s if c not in string.digits) for s in abstract]
-abstract = [value for value in abstract if value not in stopwords]
 abstract = [s for s in abstract if s]
-
-# lemmatizes the words so they are similar
-
+abstract = [value for value in abstract if value not in stopwords1]
 
 #   The IDF dicts will hold all of the words in the array with their values since it will not be unique for each
 # iteration of a word
@@ -113,11 +101,11 @@ for i in queries:
 
 # normalizing the IDF so each word has an IDF score
 for i in query_IDF.keys():
-    query_IDF[i] = numpy.log(query_document_number / query_IDF[i])
+    query_IDF[i] = np.log(query_document_number / query_IDF[i])
 # multiplies each word in TFIDF in each document by it's IDF value
 for j in query_TFIDF.keys():
     for i in query_TFIDF[j].keys():
-        query_TFIDF[j][i] = numpy.log(query_TFIDF[j][i]) * query_IDF[i]
+        query_TFIDF[j][i] = np.log(query_TFIDF[j][i]) * query_IDF[i]
 
 # this is the same version but for abstract
 abstract_words_in_doc = 0
@@ -169,14 +157,15 @@ for i in abstract:
 
 #   normalization
 for i in abstract_IDF.keys():
-    abstract_IDF[i] = numpy.log(abstract_document_number / abstract_IDF[i])
+    abstract_IDF[i] = np.log(abstract_document_number / abstract_IDF[i])
 #   multiplication by IDF scores
 for j in abstract_TFIDF.keys():
     for i in abstract_TFIDF[j].keys():
-        abstract_TFIDF[j][i] = numpy.log(abstract_TFIDF[j][i]) * abstract_IDF[i]
+        abstract_TFIDF[j][i] = np.log(abstract_TFIDF[j][i]) * abstract_IDF[i]
 
 # output list printing the
 outputlist = []
+
 
 #   this function will return the cosine similarity between two documents
 def cosinesimilarity(querydoc, abstractdoc):
@@ -215,7 +204,6 @@ for i in range(len(query_TFIDF) + 1)[1:]:
     for j in range(len(abstract_TFIDF) + 1)[1:]:
         # i is the query number, j is the abstract number, and then finally there is the cosine similarity
         index = [i, j, cosinesimilarity(query_TFIDF[i], abstract_TFIDF[j])]
-        # gets rid of all cosine similarities of 0
         if index[2] == 0:
             continue
         else:
@@ -224,7 +212,6 @@ for i in range(len(query_TFIDF) + 1)[1:]:
     sort_list.sort(key=lambda x: x[2])
     #   adds to output list where i is the number of query
     outputlist.append(sort_list)
-
 
 with open("output.txt", 'w') as f:
     for i in range(len(outputlist)):
